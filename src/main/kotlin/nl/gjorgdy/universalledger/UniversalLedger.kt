@@ -7,6 +7,7 @@ import com.github.quiltservertools.ledger.actionutils.ActionSearchParams
 import com.github.quiltservertools.ledger.actionutils.SearchResults
 import com.github.quiltservertools.ledger.database.DatabaseManager
 import com.github.quiltservertools.ledger.utility.Negatable
+import com.github.quiltservertools.ledger.utility.TextColorPallet
 import kotlinx.coroutines.launch
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
@@ -18,6 +19,7 @@ import net.minecraft.network.packet.s2c.play.SetPlayerInventoryS2CPacket
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.text.MutableText
 import net.minecraft.text.RawFilteredPair
 import net.minecraft.text.Text
 import net.minecraft.util.ActionResult
@@ -65,9 +67,9 @@ class UniversalLedger : ModInitializer {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun ActionType.getText(source: ServerCommandSource): Text {
+    fun ActionType.getText(source: ServerCommandSource): MutableText {
         val aat = this as AbstractActionType
-        val line = Text.translatable(
+        val text = Text.translatable(
             "text.ledger.action_message",
             aat.getTimeMessage(),
             aat.getSourceMessage(),
@@ -76,16 +78,20 @@ class UniversalLedger : ModInitializer {
             aat.getObjectMessage(source)
         )
         if (aat.rolledBack) {
-            line.formatted(Formatting.STRIKETHROUGH)
+            text.formatted(Formatting.STRIKETHROUGH)
         }
-        return line
+        return text
     }
 
-    fun paginateLines(actionTexts: List<Text>, actionsPerPage: Int): List<RawFilteredPair<Text>> {
+    fun paginateLines(actionTexts: List<MutableText>, actionsPerPage: Int): List<RawFilteredPair<Text>> {
         var page = Text.empty()
         val pages = mutableListOf<RawFilteredPair<Text>>()
         for (i in actionTexts.indices) {
-            page = page.append(actionTexts[i])
+            val text = actionTexts[i]
+            text.style =
+                if (i % 2 == 0) TextColorPallet.primary
+                else TextColorPallet.primaryVariant
+            page = page.append(text)
             page = page.append("\n\n")
             if ((i % actionsPerPage) == (actionsPerPage - 1)) {
                 pages.add(RawFilteredPair.of(page))
