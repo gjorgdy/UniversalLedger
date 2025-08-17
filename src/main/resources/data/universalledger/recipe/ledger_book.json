@@ -1,0 +1,31 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ggg",
+    "gbg",
+    "ggg"
+  ],
+  "key": {
+    "g": [
+      "minecraft:gold_nugget"
+    ],
+    "b": [
+      "minecraft:book"
+    ]
+  },
+  "result": {
+    "id": "minecraft:written_book",
+    "components": {
+      "minecraft:custom_data": {
+        "ledger": true
+      },
+      "minecraft:item_name": "Ledger Book",
+      "minecraft:written_book_content": {
+        "title": "Ledger Book",
+        "author": "Potatoboy9999"
+      }
+    },
+    "count": 1
+  }
+}

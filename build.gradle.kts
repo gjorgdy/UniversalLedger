@@ -63,7 +63,7 @@ dependencies {
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    modImplementation("com.github.quiltservertools:ledger:1.3.12+local")
+    modCompileOnly(include("com.github.quiltservertools:ledger:1.3.12+local") as Any)
 }
 
 tasks.processResources {
