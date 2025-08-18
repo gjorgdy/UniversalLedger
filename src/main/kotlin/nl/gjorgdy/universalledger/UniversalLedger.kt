@@ -187,16 +187,12 @@ class UniversalLedger : ModInitializer {
         val text = Text.empty()
         text.append(this.getTimeIcon())
         text.append(" ")
+        text.append(aat.getSourceMessage().copyContentOnly().setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY).withItalic(true)))
+        text.append(" ")
         text.append(Text.translatable("text.ledger.action.${aat.identifier}"))
         text.append(" ")
         text.append(aat.getObjectMessage(source))
-        text.append(Text.literal("\n> ").setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY)))
-        text.append(aat.getSourceMessage().copyContentOnly().setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY).withItalic(true)))
-
-        if (aat.rolledBack) {
-            text.formatted(Formatting.STRIKETHROUGH)
-        }
-
+        if (aat.rolledBack) text.formatted(Formatting.STRIKETHROUGH)
         return text
     }
 
