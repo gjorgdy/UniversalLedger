@@ -13,6 +13,9 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.fabric.api.event.player.UseItemCallback
+import net.minecraft.block.Blocks
+import net.minecraft.block.ChestBlock
+import net.minecraft.block.enums.ChestType
 import net.minecraft.component.DataComponentTypes
 import net.minecraft.component.type.WrittenBookContentComponent
 import net.minecraft.item.ItemStack
@@ -21,6 +24,7 @@ import net.minecraft.network.packet.s2c.play.SetPlayerInventoryS2CPacket
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.state.property.Properties
 import net.minecraft.text.MutableText
 import net.minecraft.text.RawFilteredPair
 import net.minecraft.text.Style
@@ -49,14 +53,23 @@ class UniversalLedger : ModInitializer {
             }
             return@register ActionResult.PASS
         }
-        // when right-clicking a block, ledger the block in front of it
+        // when right-clicking a block-entity, ledger this block-entity's inventory
+        // if not a block-entity, ledger the area
         UseBlockCallback.EVENT.register { player, world, hand, hitResult ->
             if (isLedgerBook(player.getStackInHand(hand))) {
-                ledgerBlock(
-                    player as ServerPlayerEntity,
-                    world as ServerWorld,
-                    hitResult.blockPos.offset(hitResult.side)
-                )
+                if (world.getBlockEntity(hitResult.blockPos) != null) {
+                    ledgerInventory(
+                        player as ServerPlayerEntity,
+                        world as ServerWorld,
+                        hitResult.blockPos
+                    )
+                } else {
+                    ledgerArea(
+                        player as ServerPlayerEntity,
+                        world as ServerWorld,
+                        8
+                    )
+                }
                 return@register ActionResult.CONSUME
             }
             return@register ActionResult.PASS
@@ -100,11 +113,44 @@ class UniversalLedger : ModInitializer {
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }
 
+    fun ledgerInventory(player: ServerPlayerEntity, world: ServerWorld, blockPos: BlockPos) {
+        // check if double chest, and expend bounds if so
+        var blockPosB = blockPos
+        val block = world.getBlockState(blockPos)
+        if (block.isOf(Blocks.CHEST)) {
+            val type = block.get(ChestBlock.CHEST_TYPE)
+            val direction = block.get(Properties.HORIZONTAL_FACING)
+            if (type == ChestType.LEFT) {
+                val rotated = direction.rotateYClockwise()
+                blockPosB = blockPos.offset(rotated)
+            }
+            else if (type == ChestType.RIGHT) {
+                val rotated = direction.rotateYCounterclockwise()
+                blockPosB = blockPos.offset(rotated)
+            }
+        }
+        // Define parameters for the ledger search
+        val params = ActionSearchParams.build {
+            this.worlds = mutableSetOf(Negatable.allow(world.registryKey.value))
+            this.bounds = BlockBox.create(blockPos, blockPosB)
+            this.actions = mutableSetOf(
+                Negatable.allow("item-insert"),
+                Negatable.allow("item-remove"),
+            )
+        }
+        ledger(player, player.getCommandSource(world as ServerWorld?), params)
+    }
+
     fun ledgerBlock(player: ServerPlayerEntity, world: ServerWorld, blockPos: BlockPos) {
         // Define parameters for the ledger search
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.registryKey.value))
             this.bounds = BlockBox.create(blockPos, blockPos)
+            this.actions = mutableSetOf(
+                Negatable.allow("block-place"),
+                Negatable.allow("block-break"),
+                Negatable.allow("block-change"),
+            )
         }
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }
