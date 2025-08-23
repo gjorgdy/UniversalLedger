@@ -5,6 +5,7 @@ import com.github.quiltservertools.ledger.actions.AbstractActionType
 import com.github.quiltservertools.ledger.actions.ActionType
 import com.github.quiltservertools.ledger.actionutils.ActionSearchParams
 import com.github.quiltservertools.ledger.actionutils.SearchResults
+import com.github.quiltservertools.ledger.api.ExtensionManager
 import com.github.quiltservertools.ledger.database.DatabaseManager
 import com.github.quiltservertools.ledger.utility.Negatable
 import com.github.quiltservertools.ledger.utility.TextColorPallet
@@ -35,12 +36,16 @@ import net.minecraft.util.Formatting
 import net.minecraft.util.Hand
 import net.minecraft.util.math.BlockBox
 import net.minecraft.util.math.BlockPos
+import nl.gjorgdy.universalledger.config.BookConfig
 import kotlin.time.ExperimentalTime
 
 class UniversalLedger : ModInitializer {
 
     @OptIn(ExperimentalTime::class)
     override fun onInitialize() {
+        Ledger.launch {
+            ExtensionManager.registerExtension(UniversalLedgerExtension)
+        }
         // when right-clicking in the air, ledger events in an 8-block radius
         UseItemCallback.EVENT.register { player, world, hand ->
             if (isLedgerBook(player.getStackInHand(hand))) {
@@ -101,14 +106,7 @@ class UniversalLedger : ModInitializer {
                 player.blockPos.add(-radius, -radius, -radius),
                 player.blockPos.add(radius, radius, radius)
             )
-            this.actions = mutableSetOf(
-                Negatable.allow("item-pick-up"),
-                Negatable.allow("item-drop"),
-                Negatable.allow("entity-kill"),
-                Negatable.allow("entity-change"),
-                Negatable.allow("entity-mount"),
-                Negatable.allow("entity-dismount"),
-            )
+            this.actions = BookConfig.getInstance().areaActions
         }
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }
@@ -133,10 +131,7 @@ class UniversalLedger : ModInitializer {
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.registryKey.value))
             this.bounds = BlockBox.create(blockPos, blockPosB)
-            this.actions = mutableSetOf(
-                Negatable.allow("item-insert"),
-                Negatable.allow("item-remove"),
-            )
+            this.actions = BookConfig.getInstance().inventoryActions
         }
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }
@@ -146,11 +141,7 @@ class UniversalLedger : ModInitializer {
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.registryKey.value))
             this.bounds = BlockBox.create(blockPos, blockPos)
-            this.actions = mutableSetOf(
-                Negatable.allow("block-place"),
-                Negatable.allow("block-break"),
-                Negatable.allow("block-change"),
-            )
+            this.actions = BookConfig.getInstance().blockActions
         }
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }

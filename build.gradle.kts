@@ -64,6 +64,9 @@ dependencies {
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
     modCompileOnly(include("com.github.quiltservertools:ledger:1.3.12+local") as Any)
+
+    compileOnly("com.uchuhimo:konf-core:1.1.2")
+    compileOnly("com.uchuhimo:konf-toml:1.1.2")
 }
 
 tasks.processResources {
