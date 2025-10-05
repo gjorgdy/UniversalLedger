@@ -18,6 +18,7 @@ import net.minecraft.block.Blocks
 import net.minecraft.block.ChestBlock
 import net.minecraft.block.enums.ChestType
 import net.minecraft.component.DataComponentTypes
+import net.minecraft.component.type.NbtComponent
 import net.minecraft.component.type.WrittenBookContentComponent
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
@@ -94,8 +95,8 @@ class UniversalLedger : ModInitializer {
     }
 
     fun isLedgerBook(itemStack: ItemStack): Boolean {
-        val data = itemStack.components.get(DataComponentTypes.CUSTOM_DATA)
-        return data?.contains("ledger") ?: false
+        val nbt: NbtComponent? = itemStack.components.get(DataComponentTypes.CUSTOM_DATA)
+        return nbt?.copyNbt()?.contains("ledger") ?: false
     }
 
     fun ledgerArea(player: ServerPlayerEntity, world: ServerWorld, radius: Int = 8) {
