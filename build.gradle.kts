@@ -3,10 +3,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "2.2.10"
+    id("com.modrinth.minotaur") version "2.+"
     id("fabric-loom") version "1.11-SNAPSHOT"
     id("maven-publish")
 }
 
+val minecraftVersions = (project.property("minecraft_versions") as String).split(',')
+val minMinecraftVersion = minecraftVersions.first();
 version = project.property("mod_version") as String
 group = project.property("maven_group") as String
 
@@ -41,17 +44,6 @@ fabricApi {
 }
 
 repositories {
-    // Add repositories to retrieve artifacts from in here.
-    // You should only use this when depending on other mods because
-    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-    // for more information about repositories.
-    maven {
-        url = uri("../local-maven")
-        metadataSources {
-             artifact() //Look directly for artifact
-        }
-    }
     mavenLocal() {
         metadataSources {
             artifact()
@@ -78,7 +70,7 @@ dependencies {
 
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
-    modCompileOnly("com.github.quiltservertools:ledger:1.3.14+local")
+    modCompileOnly("com.github.quiltservertools:ledger:${project.property("ledger_version")}+local")
 
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
@@ -92,7 +84,7 @@ tasks.processResources {
 
     filesMatching("fabric.mod.json") {
         expand("version" to project.version,
-            "minecraft_version" to project.property("minecraft_version"),
+            "minecraft_version" to minMinecraftVersion,
             "loader_version" to project.property("loader_version"),
             "kotlin_loader_version" to project.property("kotlin_loader_version"))
     }
@@ -125,12 +117,24 @@ publishing {
             from(components["java"])
         }
     }
-
-    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
     repositories {
-        // Add repositories to publish to here.
-        // Notice: This block does NOT have the same function as the block in the top level.
-        // The repositories here will be used for publishing your artifact, not for
-        // retrieving dependencies.
+    }
+}
+
+fun readChangelog(): String =
+    file("changelog.md").readText(Charsets.UTF_8)
+
+modrinth {
+    token.set(System.getenv("MODRINTH_TOKEN"))
+    projectId.set("universal-ledger")
+    versionNumber.set(project.property("mod_version") as String)
+    versionType.set(project.property("mod_release_type") as String)
+    changelog.set(readChangelog())
+    uploadFile.set(tasks.jar)
+    gameVersions.addAll(minecraftVersions)
+    loaders.add("fabric")
+    dependencies {
+        required.project("fabric-language-kotlin")
+        required.project("ledger")
     }
 }

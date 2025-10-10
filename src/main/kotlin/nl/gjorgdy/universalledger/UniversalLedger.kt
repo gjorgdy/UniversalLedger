@@ -23,6 +23,7 @@ import net.minecraft.component.type.WrittenBookContentComponent
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.network.packet.s2c.play.SetPlayerInventoryS2CPacket
+import net.minecraft.screen.ScreenHandlerType
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
@@ -149,28 +150,24 @@ class UniversalLedger : ModInitializer {
 
     fun ledger(player: ServerPlayerEntity, commandSource: ServerCommandSource, params: ActionSearchParams) {
         Ledger.launch {
+            openBook(player, createEmptyBook())
+            val pages: MutableList<RawFilteredPair<Text>> = mutableListOf()
             // Get the actions for the selected block
-            val actions = getActions(params, 2)
-            // Map the retrieved actions to text objects
-            val actionTexts =
-                if (actions.isEmpty()) listOf(Text.translatable("error.ledger.command.no_results"))
-                else actions.map { it.getText(commandSource) }
-            // Paginate the lines
-            val pages = paginateLines(actionTexts, 4)
+            for (i in 1..2) {
+                val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
+                if (actions.isEmpty() && i > 1) break;
+                // Map the retrieved actions to text objects
+                val actionTexts =
+                    if (actions.isEmpty()) listOf(Text.translatable("error.ledger.command.no_results"))
+                    else actions.map { it.getText(commandSource) }
+                // Paginate the lines
+                pages.addAll(paginateLines(actionTexts, 4));
+            }
             // Create a book from the pages
             val book = createBook(pages)
             // Open the book to the player
             openBook(player, book)
         }
-    }
-
-    suspend fun getActions(params: ActionSearchParams, pages: Int): List<ActionType> {
-        val actions = mutableListOf<ActionType>()
-        for (i in 1..pages) {
-            val results: SearchResults = DatabaseManager.searchActions(params, i)
-            actions.addAll(results.actions)
-        }
-        return actions
     }
 
     @OptIn(ExperimentalTime::class)
@@ -217,6 +214,20 @@ class UniversalLedger : ModInitializer {
             "",
             0,
             pages,
+            true
+        )
+        val book = Items.WRITTEN_BOOK.defaultStack
+        book.set(DataComponentTypes.WRITTEN_BOOK_CONTENT, bookComponent)
+        return book
+    }
+
+    fun createEmptyBook(): ItemStack {
+        val loadingText = Text.of("Loading logs...").getWithStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY)).first()
+        val bookComponent = WrittenBookContentComponent(
+            RawFilteredPair.of("Ledger"),
+            "",
+            0,
+            listOf(RawFilteredPair.of(loadingText)),
             true
         )
         val book = Items.WRITTEN_BOOK.defaultStack
