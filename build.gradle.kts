@@ -1,5 +1,15 @@
+import io.github.cdimascio.dotenv.dotenv
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("io.github.cdimascio:dotenv-kotlin:6.4.1")
+    }
+}
 
 plugins {
     kotlin("jvm") version "2.2.10"
@@ -8,8 +18,9 @@ plugins {
     id("maven-publish")
 }
 
+val dotenv = dotenv { directory = project.rootDir.path }
 val minecraftVersions = (project.property("minecraft_versions") as String).split(',')
-val minMinecraftVersion = minecraftVersions.first();
+val minMinecraftVersion = minecraftVersions.first()
 version = project.property("mod_version") as String
 group = project.property("maven_group") as String
 
@@ -62,16 +73,13 @@ configurations.all {
 }
 
 dependencies {
-    // To change the versions see the gradle.properties file
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
     mappings("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
     modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
-
+    // Ledger and its dependencies
     modCompileOnly("com.github.quiltservertools:ledger:${project.property("ledger_version")}+local")
-
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
 }
@@ -91,10 +99,6 @@ tasks.processResources {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // ensure that the encoding is set to UTF-8, no matter what the system default is
-    // this fixes some edge cases with special characters not displaying correctly
-    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
-    // If Javadoc is generated, this must be specified in that task too.
     options.encoding = "UTF-8"
     options.release.set(targetJavaVersion)
 }
@@ -109,7 +113,6 @@ tasks.jar {
     }
 }
 
-// configure the maven publication
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
@@ -125,9 +128,10 @@ fun readChangelog(): String =
     file("changelog.md").readText(Charsets.UTF_8)
 
 modrinth {
-    token.set(System.getenv("MODRINTH_TOKEN"))
+    token.set(dotenv["MODRINTH_TOKEN"])
     projectId.set("universal-ledger")
     versionNumber.set(project.property("mod_version") as String)
+    versionName.set("Universal Ledger ${project.property("mod_version") as String}")
     versionType.set(project.property("mod_release_type") as String)
     changelog.set(readChangelog())
     uploadFile.set(tasks.jar)
