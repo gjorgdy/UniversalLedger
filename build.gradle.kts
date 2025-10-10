@@ -134,7 +134,7 @@ modrinth {
     versionName.set("Universal Ledger ${project.property("mod_version") as String}")
     versionType.set(project.property("mod_release_type") as String)
     changelog.set(readChangelog())
-    uploadFile.set(tasks.jar)
+    uploadFile.set(tasks.remapJar)
     gameVersions.addAll(minecraftVersions)
     loaders.add("fabric")
     dependencies {
