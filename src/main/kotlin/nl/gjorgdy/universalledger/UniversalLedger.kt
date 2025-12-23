@@ -4,7 +4,6 @@ import com.github.quiltservertools.ledger.Ledger
 import com.github.quiltservertools.ledger.actions.AbstractActionType
 import com.github.quiltservertools.ledger.actions.ActionType
 import com.github.quiltservertools.ledger.actionutils.ActionSearchParams
-import com.github.quiltservertools.ledger.actionutils.SearchResults
 import com.github.quiltservertools.ledger.api.ExtensionManager
 import com.github.quiltservertools.ledger.database.DatabaseManager
 import com.github.quiltservertools.ledger.utility.Negatable
@@ -23,7 +22,6 @@ import net.minecraft.component.type.WrittenBookContentComponent
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
 import net.minecraft.network.packet.s2c.play.SetPlayerInventoryS2CPacket
-import net.minecraft.screen.ScreenHandlerType
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
@@ -52,9 +50,7 @@ class UniversalLedger : ModInitializer {
         UseItemCallback.EVENT.register { player, world, hand ->
             if (isLedgerBook(player.getStackInHand(hand))) {
                 ledgerArea(
-                    player as ServerPlayerEntity,
-                    world as ServerWorld,
-                    8
+                    player as ServerPlayerEntity, world as ServerWorld, 8
                 )
                 return@register ActionResult.CONSUME
             }
@@ -66,15 +62,11 @@ class UniversalLedger : ModInitializer {
             if (isLedgerBook(player.getStackInHand(hand))) {
                 if (world.getBlockEntity(hitResult.blockPos) != null) {
                     ledgerInventory(
-                        player as ServerPlayerEntity,
-                        world as ServerWorld,
-                        hitResult.blockPos
+                        player as ServerPlayerEntity, world as ServerWorld, hitResult.blockPos
                     )
                 } else {
                     ledgerArea(
-                        player as ServerPlayerEntity,
-                        world as ServerWorld,
-                        8
+                        player as ServerPlayerEntity, world as ServerWorld, 8
                     )
                 }
                 return@register ActionResult.CONSUME
@@ -85,9 +77,7 @@ class UniversalLedger : ModInitializer {
         AttackBlockCallback.EVENT.register { player, world, hand, pos, _ ->
             if (isLedgerBook(player.getStackInHand(hand))) {
                 ledgerBlock(
-                    player as ServerPlayerEntity,
-                    world as ServerWorld,
-                    pos
+                    player as ServerPlayerEntity, world as ServerWorld, pos
                 )
                 return@register ActionResult.CONSUME
             }
@@ -105,8 +95,7 @@ class UniversalLedger : ModInitializer {
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.registryKey.value))
             this.bounds = BlockBox.create(
-                player.blockPos.add(-radius, -radius, -radius),
-                player.blockPos.add(radius, radius, radius)
+                player.blockPos.add(-radius, -radius, -radius), player.blockPos.add(radius, radius, radius)
             )
             this.actions = BookConfig.getInstance().areaActions
         }
@@ -123,8 +112,7 @@ class UniversalLedger : ModInitializer {
             if (type == ChestType.LEFT) {
                 val rotated = direction.rotateYClockwise()
                 blockPosB = blockPos.offset(rotated)
-            }
-            else if (type == ChestType.RIGHT) {
+            } else if (type == ChestType.RIGHT) {
                 val rotated = direction.rotateYCounterclockwise()
                 blockPosB = blockPos.offset(rotated)
             }
@@ -155,13 +143,12 @@ class UniversalLedger : ModInitializer {
             // Get the actions for the selected block
             for (i in 1..2) {
                 val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
-                if (actions.isEmpty() && i > 1) break;
+                if (actions.isEmpty() && i > 1) break
                 // Map the retrieved actions to text objects
-                val actionTexts =
-                    if (actions.isEmpty()) listOf(Text.translatable("error.ledger.command.no_results"))
-                    else actions.map { it.getText(commandSource) }
+                val actionTexts = if (actions.isEmpty()) listOf(Text.translatable("error.ledger.command.no_results"))
+                else actions.map { it.getText(commandSource) }
                 // Paginate the lines
-                pages.addAll(paginateLines(actionTexts, 4));
+                pages.addAll(paginateLines(actionTexts, 4))
             }
             // Create a book from the pages
             val book = createBook(pages)
@@ -176,7 +163,9 @@ class UniversalLedger : ModInitializer {
         val text = Text.empty()
         text.append(this.getTimeIcon())
         text.append(" ")
-        text.append(aat.getSourceMessage().copyContentOnly().setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY).withItalic(true)))
+        text.append(
+            aat.getSourceMessage().copyContentOnly().setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY).withItalic(true))
+        )
         text.append(" ")
         text.append(Text.translatable("text.ledger.action.${aat.identifier}"))
         text.append(" ")
@@ -195,9 +184,8 @@ class UniversalLedger : ModInitializer {
         val pages = mutableListOf<RawFilteredPair<Text>>()
         for (i in actionTexts.indices) {
             val text = actionTexts[i]
-            text.style =
-                if (i % 2 == 0) TextColorPallet.primary
-                else TextColorPallet.secondary
+            text.style = if (i % 2 == 0) TextColorPallet.primary
+            else TextColorPallet.secondary
             page = page.append(text)
             page = page.append("\n\n")
             if ((i % actionsPerPage) == (actionsPerPage - 1) || i == (actionTexts.size - 1)) {
@@ -210,11 +198,7 @@ class UniversalLedger : ModInitializer {
 
     fun createBook(pages: List<RawFilteredPair<Text>>): ItemStack {
         val bookComponent = WrittenBookContentComponent(
-            RawFilteredPair.of("Ledger"),
-            "",
-            0,
-            pages,
-            true
+            RawFilteredPair.of("Ledger"), "", 0, pages, true
         )
         val book = Items.WRITTEN_BOOK.defaultStack
         book.set(DataComponentTypes.WRITTEN_BOOK_CONTENT, bookComponent)
@@ -224,11 +208,7 @@ class UniversalLedger : ModInitializer {
     fun createEmptyBook(): ItemStack {
         val loadingText = Text.of("Loading logs...").getWithStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY)).first()
         val bookComponent = WrittenBookContentComponent(
-            RawFilteredPair.of("Ledger"),
-            "",
-            0,
-            listOf(RawFilteredPair.of(loadingText)),
-            true
+            RawFilteredPair.of("Ledger"), "", 0, listOf(RawFilteredPair.of(loadingText)), true
         )
         val book = Items.WRITTEN_BOOK.defaultStack
         book.set(DataComponentTypes.WRITTEN_BOOK_CONTENT, bookComponent)
@@ -236,11 +216,9 @@ class UniversalLedger : ModInitializer {
     }
 
     fun openBook(player: ServerPlayerEntity, book: ItemStack) {
-        player.networkHandler
-            .sendPacket(SetPlayerInventoryS2CPacket(40, book))
+        player.networkHandler.sendPacket(SetPlayerInventoryS2CPacket(40, book))
         player.useBook(book, Hand.OFF_HAND)
-        player.networkHandler
-            .sendPacket(SetPlayerInventoryS2CPacket(40, player.inventory.getStack(40)))
+        player.networkHandler.sendPacket(SetPlayerInventoryS2CPacket(40, player.inventory.getStack(40)))
     }
 
 }

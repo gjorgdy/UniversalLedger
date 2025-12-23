@@ -14,7 +14,7 @@ buildscript {
 plugins {
     kotlin("jvm") version "2.2.10"
     id("com.modrinth.minotaur") version "2.+"
-    id("fabric-loom") version "1.11-SNAPSHOT"
+    id("fabric-loom") version "${project.property("loom_version")}"
     id("maven-publish")
 }
 
@@ -93,8 +93,9 @@ tasks.processResources {
     filesMatching("fabric.mod.json") {
         expand("version" to project.version,
             "minecraft_version" to minMinecraftVersion,
-            "loader_version" to project.property("loader_version"),
-            "kotlin_loader_version" to project.property("kotlin_loader_version"))
+            "loader_version" to project.property("loader_version")!!,
+            "kotlin_loader_version" to project.property("kotlin_loader_version")!!
+        )
     }
 }
 

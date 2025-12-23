@@ -1,4 +1,4 @@
-﻿Updated to 1.21.10
+﻿Updated to 1.21.11
 ---
 
-Added loading feedback
+Just an update to the latest version of Minecraft and Ledger
