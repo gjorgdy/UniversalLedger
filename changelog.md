@@ -1,4 +1,4 @@
-﻿Chat only mode
+﻿Tiny Takeover, Tiny Logbook
 ---
 
-Added a config option to send logs to the player in the chat instead of opening a book.
+Updated the mod to 26.1.2

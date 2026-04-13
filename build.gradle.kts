@@ -137,8 +137,8 @@ tasks.named("modrinth") {
 modrinth {
     token.set(dotenv["MODRINTH_TOKEN"])
     projectId.set("universal-ledger")
-    versionNumber.set(project.property("mod_version") as String)
-    versionName.set("Universal Ledger ${project.property("mod_version") as String}")
+    versionNumber.set("${project.property("mod_version")}+${project.property("minecraft_version")}")
+    versionName.set("Universal Ledger ${project.property("mod_version")}+${project.property("minecraft_version")}")
     versionType.set(project.property("mod_release_type") as String)
     changelog.set(readChangelog())
     uploadFile.set(tasks.jar)
