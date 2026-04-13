@@ -68,6 +68,11 @@ repositories {
         url = uri("https://api.modrinth.com/maven")
         name = "Modrinth"
     }
+    repositories {
+        maven {
+            url = uri("https://repo.opencollab.dev/main/")
+        }
+    }
     mavenCentral()
 }
 
@@ -90,6 +95,9 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
+    // Floodgate
+    compileOnly("org.geysermc.geyser:api:${project.property("geyser_version")}")
+    compileOnly("org.geysermc.floodgate:api:${project.property("floodgate_version")}")
 }
 
 tasks.processResources {
