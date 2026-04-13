@@ -64,10 +64,6 @@ class UniversalLedger : ModInitializer {
                     ledgerInventory(
                         player as ServerPlayerEntity, world as ServerWorld, hitResult.blockPos
                     )
-                } else {
-                    ledgerArea(
-                        player as ServerPlayerEntity, world as ServerWorld, 8
-                    )
                 }
                 return@register ActionResult.CONSUME
             }
@@ -136,7 +132,29 @@ class UniversalLedger : ModInitializer {
         ledger(player, player.getCommandSource(world as ServerWorld?), params)
     }
 
+    fun ledgerChat(player: ServerPlayerEntity, commandSource: ServerCommandSource, params: ActionSearchParams) {
+        Ledger.launch {
+            for (i in 1..2) {
+                val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
+                if (actions.isEmpty() && i > 1) break
+                if (actions.isEmpty()) {
+                    player.sendMessage(
+                        Text.translatable("error.ledger.command.no_results")
+                    )
+                } else {
+                    actions.forEach { action ->
+                        player.sendMessage(action.getText(commandSource, true))
+                    }
+                }
+            }
+        }
+    }
+
     fun ledger(player: ServerPlayerEntity, commandSource: ServerCommandSource, params: ActionSearchParams) {
+        if (BookConfig.getInstance().chatOnly) {
+            ledgerChat(player, commandSource, params)
+            return
+        }
         Ledger.launch {
             openBook(player, createEmptyBook())
             val pages: MutableList<RawFilteredPair<Text>> = mutableListOf()
@@ -158,10 +176,10 @@ class UniversalLedger : ModInitializer {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun ActionType.getText(source: ServerCommandSource): MutableText {
+    fun ActionType.getText(source: ServerCommandSource, printTime: Boolean = false): MutableText {
         val aat = this as AbstractActionType
         val text = Text.empty()
-        text.append(this.getTimeIcon())
+        text.append(if (printTime) this.getTimeMessage() else this.getTimeIcon())
         text.append(" ")
         text.append(
             aat.getSourceMessage().copyContentOnly().setStyle(Style.EMPTY.withColor(Colors.LIGHT_GRAY).withItalic(true))

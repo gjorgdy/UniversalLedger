@@ -61,6 +61,7 @@ repositories {
             ignoreGradleMetadataRedirection()
         }
     }
+    maven { url = uri("https://api.modrinth.com/maven") }
 }
 
 configurations.all {
@@ -79,7 +80,7 @@ dependencies {
     modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
     // Ledger and its dependencies
-    modCompileOnly("com.github.quiltservertools:ledger:${project.property("ledger_version")}+local")
+    modCompileOnly("maven.modrinth:ledger:${project.property("ledger_version")}")
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
 }
