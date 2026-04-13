@@ -40,4 +40,6 @@ areaActions = ["item-pick-up", "item-drop", "entity-kill", "entity-change", "ent
 inventoryActions = ["item-insert", "item-remove"]
 # What actions should be shown when left-clicking a block
 blockActions = ["block-place", "block-break", "block-change"]
+# If true, will send the logs to the player in the chat instead of opening a book
+chatOnly = false
 ```

@@ -69,10 +69,6 @@ class UniversalLedger : ModInitializer {
                     ledgerInventory(
                         player as ServerPlayer, world as ServerLevel, hitResult.blockPos
                     )
-                } else {
-                    ledgerArea(
-                        player as ServerPlayer, world as ServerLevel, 8
-                    )
                 }
                 return@register InteractionResult.CONSUME
             }
@@ -141,7 +137,29 @@ class UniversalLedger : ModInitializer {
         ledger(player, player.createCommandSourceStack(), params)
     }
 
+    fun ledgerChat(player: ServerPlayerEntity, commandSource: ServerCommandSource, params: ActionSearchParams) {
+        Ledger.launch {
+            for (i in 1..2) {
+                val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
+                if (actions.isEmpty() && i > 1) break
+                if (actions.isEmpty()) {
+                    player.sendMessage(
+                        Text.translatable("error.ledger.command.no_results")
+                    )
+                } else {
+                    actions.forEach { action ->
+                        player.sendMessage(action.getText(commandSource, true))
+                    }
+                }
+            }
+        }
+    }
+
     fun ledger(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        if (BookConfig.getInstance().chatOnly) {
+            ledgerChat(player, commandSource, params)
+            return
+        }
         Ledger.launch {
             openBook(player, createEmptyBook())
             val pages: MutableList<Filterable<Component>> = mutableListOf()
@@ -163,10 +181,10 @@ class UniversalLedger : ModInitializer {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun ActionType.getText(source: CommandSourceStack): MutableComponent {
+    fun ActionType.getText(source: CommandSourceStack, printTime: Boolean = false): MutableComponent {
         val aat = this as AbstractActionType
         val text = Component.empty()
-        text.append(this.getTimeIcon())
+        text.append(if (printTime) this.getTimeMessage() else this.getTimeIcon())
         text.append(" ")
         text.append(
             aat.getSourceMessage().plainCopy().setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY).withItalic(true))

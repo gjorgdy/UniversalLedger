@@ -64,11 +64,7 @@ repositories {
             ignoreGradleMetadataRedirection()
         }
     }
-    maven {
-        url = uri("https://api.modrinth.com/maven")
-        name = "Modrinth"
-    }
-    mavenCentral()
+    maven { url = uri("https://api.modrinth.com/maven") }
 }
 
 configurations.all {
@@ -87,7 +83,6 @@ dependencies {
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_api_version")}")
     // Ledger and its dependencies
     implementation("maven.modrinth:ledger:${project.property("ledger_version")}")
-    implementation(kotlin("stdlib-jdk8"))
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
 }
@@ -136,6 +131,9 @@ publishing {
 fun readChangelog(): String =
     file("changelog.md").readText(Charsets.UTF_8)
 
+tasks.named("modrinth") {
+    dependsOn(tasks.named("modrinthSyncBody"))
+}
 modrinth {
     token.set(dotenv["MODRINTH_TOKEN"])
     projectId.set("universal-ledger")
@@ -146,6 +144,7 @@ modrinth {
     uploadFile.set(tasks.jar)
     gameVersions.addAll(minecraftVersions)
     loaders.add("fabric")
+    syncBodyFrom.set(rootProject.file("README.md").readText(Charsets.UTF_8))
     dependencies {
         required.project("fabric-language-kotlin")
         required.project("ledger")

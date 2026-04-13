@@ -1,4 +1,4 @@
-﻿Updated to 1.21.11
+﻿Chat only mode
 ---
 
-Just an update to the latest version of Minecraft and Ledger
+Added a config option to send logs to the player in the chat instead of opening a book.
