@@ -12,9 +12,9 @@ buildscript {
 }
 
 plugins {
-    kotlin("jvm") version "2.2.10"
+    kotlin("jvm") version "2.3.20"
     id("com.modrinth.minotaur") version "2.+"
-    id("fabric-loom") version "${project.property("loom_version")}"
+    id("net.fabricmc.fabric-loom") version "${project.property("loom_version")}"
     id("maven-publish")
 }
 
@@ -28,9 +28,12 @@ base {
     archivesName.set(project.property("archives_base_name") as String)
 }
 
-val targetJavaVersion = 21
+val targetJavaVersion = 25
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+        vendor = JvmVendorSpec.ORACLE
+    }
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
@@ -61,6 +64,11 @@ repositories {
             ignoreGradleMetadataRedirection()
         }
     }
+    maven {
+        url = uri("https://api.modrinth.com/maven")
+        name = "Modrinth"
+    }
+    mavenCentral()
 }
 
 configurations.all {
@@ -74,12 +82,12 @@ configurations.all {
 
 dependencies {
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    mappings("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
-    modImplementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
+    implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_api_version")}")
     // Ledger and its dependencies
-    modCompileOnly("com.github.quiltservertools:ledger:${project.property("ledger_version")}+local")
+    implementation("maven.modrinth:ledger:${project.property("ledger_version")}")
+    implementation(kotlin("stdlib-jdk8"))
     compileOnly("com.uchuhimo:konf-core:1.1.2")
     compileOnly("com.uchuhimo:konf-toml:1.1.2")
 }
@@ -135,11 +143,14 @@ modrinth {
     versionName.set("Universal Ledger ${project.property("mod_version") as String}")
     versionType.set(project.property("mod_release_type") as String)
     changelog.set(readChangelog())
-    uploadFile.set(tasks.remapJar)
+    uploadFile.set(tasks.jar)
     gameVersions.addAll(minecraftVersions)
     loaders.add("fabric")
     dependencies {
         required.project("fabric-language-kotlin")
         required.project("ledger")
     }
+}
+kotlin {
+    jvmToolchain(25)
 }
