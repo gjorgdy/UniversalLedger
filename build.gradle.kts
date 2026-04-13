@@ -129,6 +129,9 @@ publishing {
 fun readChangelog(): String =
     file("changelog.md").readText(Charsets.UTF_8)
 
+tasks.named("modrinth") {
+    dependsOn(tasks.named("modrinthSyncBody"))
+}
 modrinth {
     token.set(dotenv["MODRINTH_TOKEN"])
     projectId.set("universal-ledger")
@@ -139,6 +142,7 @@ modrinth {
     uploadFile.set(tasks.remapJar)
     gameVersions.addAll(minecraftVersions)
     loaders.add("fabric")
+    syncBodyFrom.set(rootProject.file("README.md").readText(Charsets.UTF_8))
     dependencies {
         required.project("fabric-language-kotlin")
         required.project("ledger")
