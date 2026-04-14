@@ -8,23 +8,18 @@ import com.github.quiltservertools.ledger.api.ExtensionManager
 import com.github.quiltservertools.ledger.database.DatabaseManager
 import com.github.quiltservertools.ledger.utility.Negatable
 import com.github.quiltservertools.ledger.utility.TextColorPallet
-import jdk.internal.org.jline.utils.Colors
 import kotlinx.coroutines.launch
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.fabric.api.event.player.UseItemCallback
 import net.minecraft.ChatFormatting
-import net.minecraft.commands.CommandSource
 import net.minecraft.commands.CommandSourceStack
-import net.minecraft.core.BlockBox
 import net.minecraft.core.BlockPos
-import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.MutableComponent
 import net.minecraft.network.chat.Style
-import net.minecraft.network.chat.contents.NbtContents
 import net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
@@ -40,8 +35,6 @@ import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.state.properties.ChestType
 import net.minecraft.world.level.levelgen.structure.BoundingBox
 import nl.gjorgdy.universalledger.config.BookConfig
-import java.util.Properties
-import javax.xml.crypto.Data
 import kotlin.time.ExperimentalTime
 
 class UniversalLedger : ModInitializer {
@@ -68,10 +61,6 @@ class UniversalLedger : ModInitializer {
                 if (world.getBlockEntity(hitResult.blockPos) != null) {
                     ledgerInventory(
                         player as ServerPlayer, world as ServerLevel, hitResult.blockPos
-                    )
-                } else {
-                    ledgerArea(
-                        player as ServerPlayer, world as ServerLevel, 8
                     )
                 }
                 return@register InteractionResult.CONSUME
@@ -136,12 +125,34 @@ class UniversalLedger : ModInitializer {
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.dimension().identifier()))
             this.bounds = BoundingBox.fromCorners(blockPos, blockPos)
-            this.actions = BookConfig.getInstance().inventoryActions
+            this.actions = BookConfig.getInstance().blockActions
         }
         ledger(player, player.createCommandSourceStack(), params)
     }
 
+    fun ledgerChat(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        Ledger.launch {
+            for (i in 1..2) {
+                val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
+                if (actions.isEmpty() && i > 1) break
+                if (actions.isEmpty()) {
+                    player.sendSystemMessage(
+                        Component.translatable("error.ledger.command.no_results")
+                    )
+                } else {
+                    actions.forEach { action ->
+                        player.sendSystemMessage(action.getText(commandSource, true))
+                    }
+                }
+            }
+        }
+    }
+
     fun ledger(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        if (BookConfig.getInstance().chatOnly) {
+            ledgerChat(player, commandSource, params)
+            return
+        }
         Ledger.launch {
             openBook(player, createEmptyBook())
             val pages: MutableList<Filterable<Component>> = mutableListOf()
@@ -163,10 +174,10 @@ class UniversalLedger : ModInitializer {
     }
 
     @OptIn(ExperimentalTime::class)
-    fun ActionType.getText(source: CommandSourceStack): MutableComponent {
+    fun ActionType.getText(source: CommandSourceStack, printTime: Boolean = false): MutableComponent {
         val aat = this as AbstractActionType
         val text = Component.empty()
-        text.append(this.getTimeIcon())
+        text.append(if (printTime) this.getTimeMessage() else this.getTimeIcon())
         text.append(" ")
         text.append(
             aat.getSourceMessage().plainCopy().setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY).withItalic(true))

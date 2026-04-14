@@ -8,11 +8,13 @@ class BookConfig {
     val areaActions: MutableSet<Negatable<String>>?
     val inventoryActions: MutableSet<Negatable<String>>?
     val blockActions: MutableSet<Negatable<String>>?
+    var chatOnly: Boolean = false
 
     private constructor() {
         areaActions = config[BookSpec.areaActions].map { Negatable.allow(it) }.toMutableSet()
         inventoryActions = config[BookSpec.inventoryActions].map { Negatable.allow(it) }.toMutableSet()
         blockActions = config[BookSpec.blockActions].map { Negatable.allow(it) }.toMutableSet()
+        chatOnly = config[BookSpec.chatOnly]
     }
 
     companion object {

@@ -1,4 +1,4 @@
-﻿Updated to 1.21.11
+﻿Tiny Takeover, Tiny Logbook
 ---
 
-Just an update to the latest version of Minecraft and Ledger
+Updated the mod to 26.1.2
