@@ -1,46 +1,67 @@
 package nl.gjorgdy.universalledger
 
 import com.github.quiltservertools.ledger.Ledger
-import com.github.quiltservertools.ledger.actions.AbstractActionType
 import com.github.quiltservertools.ledger.actions.ActionType
 import com.github.quiltservertools.ledger.actionutils.ActionSearchParams
 import com.github.quiltservertools.ledger.api.ExtensionManager
 import com.github.quiltservertools.ledger.database.DatabaseManager
 import com.github.quiltservertools.ledger.utility.Negatable
-import com.github.quiltservertools.ledger.utility.TextColorPallet
 import kotlinx.coroutines.launch
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.fabric.api.event.player.UseItemCallback
-import net.minecraft.ChatFormatting
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.core.BlockPos
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.MutableComponent
-import net.minecraft.network.chat.Style
-import net.minecraft.network.protocol.game.ClientboundSetPlayerInventoryPacket
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.server.network.Filterable
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
 import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.item.component.WrittenBookContent
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.ChestBlock
 import net.minecraft.world.level.block.state.properties.ChestType
 import net.minecraft.world.level.levelgen.structure.BoundingBox
+import nl.gjorgdy.universalledger.ActionTypeExtension.Companion.getText
 import nl.gjorgdy.universalledger.config.BookConfig
+import nl.gjorgdy.universalledger.player_handlers.FloodgatePlayerHandler
+import nl.gjorgdy.universalledger.player_handlers.GeyserPlayerHandler
+import nl.gjorgdy.universalledger.player_handlers.PlayerHandler
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import kotlin.time.ExperimentalTime
 
-class UniversalLedger : ModInitializer {
+class UniversalLedgerMod : ModInitializer {
+
+    private lateinit var playerHandler: PlayerHandler;
+
+    private val logger: Logger = LogManager.getLogger("Universal Ledger")
+
+    fun ServerPlayer.isBedrockPlayer(): Boolean {
+        return playerHandler.isBedrockPlayer(this)
+    }
 
     @OptIn(ExperimentalTime::class)
     override fun onInitialize() {
+        playerHandler = if (FabricLoader.getInstance().isModLoaded("floodgate")) {
+            FloodgatePlayerHandler();
+        } else if (FabricLoader.getInstance().isModLoaded("geyser-fabric")) {
+            GeyserPlayerHandler();
+        } else {
+            object: PlayerHandler {
+                override fun isBedrockPlayer(player: ServerPlayer): Boolean {
+                    return false
+                }
+            }
+        }
+        logger.info("Initialized Universal Ledger Mod with player handler: ${playerHandler::class.simpleName}")
+
         Ledger.launch {
             ExtensionManager.registerExtension(UniversalLedgerExtension)
         }
@@ -93,7 +114,7 @@ class UniversalLedger : ModInitializer {
             )
             this.actions = BookConfig.getInstance().areaActions
         }
-        ledger(player, player.createCommandSourceStack(), params)
+        ledgerShow(player, player.createCommandSourceStack(), params)
     }
 
     fun ledgerInventory(player: ServerPlayer, world: ServerLevel, blockPos: BlockPos) {
@@ -117,7 +138,7 @@ class UniversalLedger : ModInitializer {
             this.bounds = BoundingBox.fromCorners(blockPos, blockPosB)
             this.actions = BookConfig.getInstance().inventoryActions
         }
-        ledger(player, player.createCommandSourceStack(), params)
+        ledgerShow(player, player.createCommandSourceStack(), params)
     }
 
     fun ledgerBlock(player: ServerPlayer, world: ServerLevel, blockPos: BlockPos) {
@@ -127,10 +148,23 @@ class UniversalLedger : ModInitializer {
             this.bounds = BoundingBox.fromCorners(blockPos, blockPos)
             this.actions = BookConfig.getInstance().blockActions
         }
-        ledger(player, player.createCommandSourceStack(), params)
+        ledgerShow(player, player.createCommandSourceStack(), params)
     }
 
-    fun ledgerChat(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+    fun ledgerShow(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        if (BookConfig.getInstance().chatOnly) {
+            ledgerSendChat(player, commandSource, params)
+        } else {
+            ledgerShowBook(player, commandSource, params)
+        }
+    }
+
+    fun ledgerSendChat(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        if (playerHandler.isBedrockPlayer(player)) {
+            logger.info("is a bedrock player")
+        } else {
+            logger.info("is a java player")
+        }
         Ledger.launch {
             for (i in 1..2) {
                 val actions: List<ActionType> = DatabaseManager.searchActions(params, i).actions
@@ -148,13 +182,14 @@ class UniversalLedger : ModInitializer {
         }
     }
 
-    fun ledger(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
-        if (BookConfig.getInstance().chatOnly) {
-            ledgerChat(player, commandSource, params)
-            return
+    fun ledgerShowBook(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
+        if (playerHandler.isBedrockPlayer(player)) {
+            logger.info("is a bedrock player")
+        } else {
+            BookUtils.openBook(player)
+            logger.info("is a java player")
         }
         Ledger.launch {
-            openBook(player, createEmptyBook())
             val pages: MutableList<Filterable<Component>> = mutableListOf()
             // Get the actions for the selected block
             for (i in 1..2) {
@@ -164,77 +199,14 @@ class UniversalLedger : ModInitializer {
                 val actionTexts = if (actions.isEmpty()) listOf(Component.translatable("error.ledger.command.no_results"))
                 else actions.map { it.getText(commandSource) }
                 // Paginate the lines
-                pages.addAll(paginateLines(actionTexts, 4))
+                pages.addAll(BookUtils.paginateLines(actionTexts, (if (player.isBedrockPlayer()) 6 else 4)))
             }
             // Create a book from the pages
-            val book = createBook(pages)
+//            book.set(DataComponents.WRITTEN_BOOK_CONTENT, bookComponent)
+            val book = BookUtils.createBook(pages)
             // Open the book to the player
-            openBook(player, book)
+            BookUtils.openBook(player, book)
         }
-    }
-
-    @OptIn(ExperimentalTime::class)
-    fun ActionType.getText(source: CommandSourceStack, printTime: Boolean = false): MutableComponent {
-        val aat = this as AbstractActionType
-        val text = Component.empty()
-        text.append(if (printTime) this.getTimeMessage() else this.getTimeIcon())
-        text.append(" ")
-        text.append(
-            aat.getSourceMessage().plainCopy().setStyle(Style.EMPTY.withColor(ChatFormatting.GRAY).withItalic(true))
-        )
-        text.append(" ")
-        text.append(Component.translatable("text.ledger.action.${aat.identifier}"))
-        text.append(" ")
-        text.append(aat.getObjectMessage(source))
-        if (aat.rolledBack) text.withStyle(ChatFormatting.STRIKETHROUGH)
-        return text
-    }
-
-    @OptIn(ExperimentalTime::class)
-    fun AbstractActionType.getTimeIcon(): MutableComponent {
-        return Component.literal("\uD83D\uDD50").setStyle(this.getTimeMessage().style)
-    }
-
-    fun paginateLines(actionTexts: List<MutableComponent>, actionsPerPage: Int): List<Filterable<Component>> {
-        var page = Component.empty()
-        val pages = mutableListOf<Filterable<Component>>()
-        for (i in actionTexts.indices) {
-            val text = actionTexts[i]
-            text.style = if (i % 2 == 0) TextColorPallet.primary
-            else TextColorPallet.secondary
-            page = page.append(text)
-            page = page.append("\n\n")
-            if ((i % actionsPerPage) == (actionsPerPage - 1) || i == (actionTexts.size - 1)) {
-                pages.add(Filterable.passThrough(page))
-                page = Component.empty()
-            }
-        }
-        return pages
-    }
-
-    fun createBook(pages: List<Filterable<Component>>): ItemStack {
-        val bookComponent = WrittenBookContent(
-            Filterable.passThrough("Ledger"), "", 0, pages, true
-        )
-        val book = Items.WRITTEN_BOOK.defaultInstance
-        book.set(DataComponents.WRITTEN_BOOK_CONTENT, bookComponent)
-        return book
-    }
-
-    fun createEmptyBook(): ItemStack {
-        val loadingText = Component.literal("Loading logs...").withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY))
-        val bookComponent = WrittenBookContent(
-            Filterable.passThrough("Ledger"), "", 0, listOf(Filterable.passThrough(loadingText)), true
-        )
-        val book = Items.WRITTEN_BOOK.defaultInstance
-        book[DataComponents.WRITTEN_BOOK_CONTENT] = bookComponent
-        return book
-    }
-
-    fun openBook(player: ServerPlayer, book: ItemStack) {
-        player.connection.send(ClientboundSetPlayerInventoryPacket(40, book))
-        player.openItemGui(book, InteractionHand.OFF_HAND)
-        player.connection.send(ClientboundSetPlayerInventoryPacket(40, player.inventory.getItem(40)))
     }
 
 }

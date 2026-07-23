@@ -13,7 +13,9 @@
 
   "environment": "server",
   "entrypoints": {
-    "main": ["nl.gjorgdy.universalledger.UniversalLedger"]
+    "main": [
+      "nl.gjorgdy.universalledger.UniversalLedgerMod"
+    ]
   },
 
   "depends": {
