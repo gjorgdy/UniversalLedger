@@ -1,4 +1,4 @@
-﻿Tiny Takeover, Tiny Logbook
+﻿The Book Is Back
 ---
 
-Updated the mod to 26.1.2
+Updated the mod to 26.2
