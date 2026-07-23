@@ -85,18 +85,20 @@ class UniversalLedger : ModInitializer {
     }
 
     fun ledgerArea(player: ServerPlayer, world: ServerLevel, radius: Int = 8) {
+        val config = BookConfig.getInstance() ?: return
         // Define parameters for the ledger search
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.dimension().identifier()))
             this.bounds = BoundingBox.fromCorners(
                 player.onPos.offset(-radius, -radius, -radius), player.onPos.offset(radius, radius, radius)
             )
-            this.actions = BookConfig.getInstance().areaActions
+            this.actions = config.areaActions
         }
         ledger(player, player.createCommandSourceStack(), params)
     }
 
     fun ledgerInventory(player: ServerPlayer, world: ServerLevel, blockPos: BlockPos) {
+        val config = BookConfig.getInstance() ?: return
         // check if double chest, and expend bounds if so
         var blockPosB = blockPos
         val block = world.getBlockState(blockPos)
@@ -115,17 +117,18 @@ class UniversalLedger : ModInitializer {
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.dimension().identifier()))
             this.bounds = BoundingBox.fromCorners(blockPos, blockPosB)
-            this.actions = BookConfig.getInstance().inventoryActions
+            this.actions = config.inventoryActions
         }
         ledger(player, player.createCommandSourceStack(), params)
     }
 
     fun ledgerBlock(player: ServerPlayer, world: ServerLevel, blockPos: BlockPos) {
+        val config = BookConfig.getInstance() ?: return
         // Define parameters for the ledger search
         val params = ActionSearchParams.build {
             this.worlds = mutableSetOf(Negatable.allow(world.dimension().identifier()))
             this.bounds = BoundingBox.fromCorners(blockPos, blockPos)
-            this.actions = BookConfig.getInstance().blockActions
+            this.actions = config.blockActions
         }
         ledger(player, player.createCommandSourceStack(), params)
     }
@@ -149,7 +152,8 @@ class UniversalLedger : ModInitializer {
     }
 
     fun ledger(player: ServerPlayer, commandSource: CommandSourceStack, params: ActionSearchParams) {
-        if (BookConfig.getInstance().chatOnly) {
+        val config = BookConfig.getInstance() ?: return
+        if (config.chatOnly) {
             ledgerChat(player, commandSource, params)
             return
         }

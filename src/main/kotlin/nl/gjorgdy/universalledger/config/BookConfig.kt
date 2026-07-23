@@ -22,10 +22,16 @@ class BookConfig {
         @Volatile
         private var instance: BookConfig? = null
 
-        fun getInstance() =
-            instance ?: synchronized(this) {
-                instance ?: BookConfig().also { instance = it }
+        fun getInstance(): BookConfig? {
+            try {
+                return instance ?: synchronized(this) {
+                    return instance ?: BookConfig().also { instance = it }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
+            return null;
+        }
     }
 
 }
